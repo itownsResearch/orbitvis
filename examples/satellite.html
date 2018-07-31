@@ -51,7 +51,7 @@
             function addMeshToScene() {
                 // creation of the new mesh (a cylinder)
                 var THREE = itowns.THREE;
-                var geometry = new THREE.CylinderGeometry(0, 10, 60, 8);
+                var geometry = new THREE.SphereGeometry(100000, 12, 12);
                 var material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
                 var mesh = new THREE.Mesh(geometry, material);
 
