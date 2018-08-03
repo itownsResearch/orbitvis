@@ -12,6 +12,10 @@
         <div id="viewerDiv"></div>
         <script src="js/GUI/GuiTools.js"></script>
         <script src="../dist/itowns.js"></script>
+        <script type="text/javascript"> let module = {exports:0};
+         </script>
+         <!-- <script src="https://rawgit.com/joshuaferrara/node-sgp4/master/sgp4.js"></script> -->
+        <script src="https://cdn.jsdelivr.net/npm/sgp4@1.0.10/sgp4.min.js"></script>
         <script src="js/loading_screen.js"></script>
         <script src="../dist/debug.js"></script>
         <script type="text/javascript">
@@ -23,18 +27,22 @@
             // var positionOnGlobe = { longitude: 6.2230, latitude: 45.8532, altitude: 5000 };
 
             // Position near Gerbier mountain.
-            var positionOnGlobe = { longitude: 4.22, latitude: 44.844, altitude: 4000 };
+            var positionOnGlobe = { longitude: 4.22, latitude: 44.844, altitude: 10000000 };
 
             // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
             var viewerDiv = document.getElementById('viewerDiv');
 
             // Instanciate iTowns GlobeView*
-            var globeView = new itowns.GlobeView(viewerDiv, positionOnGlobe);
+            var globeView = new itowns.GlobeView(viewerDiv, positionOnGlobe, {noControls: true});
 
             var promises = [];
 
             var menuGlobe = new GuiTools('menuDiv', globeView);
             setupLoadingScreen(viewerDiv, globeView);
+
+            // 1 hour coord of ISS. Quadruplet: t(seconds),x,y,z
+            //const ISSCoordinates = [0,-622047.9073354374,-6741597.65930284,-461086.9956850074,30,-493039.72299258783,-6737579.000143799,-640501.0339055341,60,-363433.4463505021,-6726420.719653145,-819178.6750749751,90,-233345.8098409403,-6708137.878399649,-996914.4770435315,120,-102894.18352919456,-6682753.163696976,-1173504.0732091777,150,27803.523591679754,-6650296.861534489,-1348744.406698681,180,158628.9646266494,-6610806.82043792,-1522433.9630853767,210,289463.45619395445,-6564328.407171635,-1694373.001380792,240,420188.0804617068,-6510914.454355235,-1864363.7830384772,270,550683.7880246318,-6450625.200027885,-2032210.7987109432,300,680831.4997619174,-6383528.219373255,-2197720.992502438,330,810512.2120513102,-6309698.348331596,-2360703.983463278,360,939607.0993098159,-6229217.599628519,-2520972.2840740858,390,1067997.6182472648,-6142175.0709936675,-2678341.51547162,420,1195565.612238172,-6048666.845736591,-2832630.6191711137,450,1322193.414358034,-5948795.886092445,-2983662.0650438177,480,1447763.9531821357,-5842671.918661063,-3131262.055312529,510,1572160.8556718263,-5730411.31310205,-3275260.724331785,540,1695268.5512673538,-5612136.953454043,-3415492.333924258,570,1816972.3754129151,-5487978.102518657,-3551795.464049334,600,1937158.672712249,-5358070.259406887,-3684013.1985850353,630,2055714.899865219,-5222555.010309276,-3811993.306009483,660,2172529.7268557996,-5081579.873211856,-3935588.414773856,690,2287493.1399271167,-4935298.135340464,-4054656.1831643023,720,2400496.541403505,-4783868.685340561,-4169059.463456321,750,2511432.8499263227,-4627455.839015695,-4278666.460171239,780,2620196.599546448,-4466229.1593529675,-4383350.882250978,810,2726684.0378319994,-4300363.270941869,-4482992.088973792,840,2830793.2230919474,-4130037.668858983,-4577475.229440549,870,2932424.1194832567,-3955436.523000452,-4666691.375468249,900,3031478.6927928953,-3776748.4761532703,-4750537.647734659,930,3127861.002942716,-3594166.4385718238,-4828917.335025349,960,3221477.2960469583,-3407887.3773859707,-4901740.006442254,990,3312236.0949080964,-3218112.101673317,-4968921.61644043,1020,3400048.287168608,-3025045.044211064,-5030384.602567882,1050,3484827.2132879943,-2828894.0378909227,-5086057.975791369,1080,3566488.7512232885,-2629870.0900344113,-5135877.4032994695,1110,3644951.4000273533,-2428187.1526213223,-5179785.283682591,1140,3720136.3613534365,-2224061.8895719144,-5217730.81439823,1170,3791967.618939206,-2017713.4411902537,-5249670.051438508,1200,3860372.016071167,-1809363.1858502675,-5275565.961125859,1230,3925279.330441991,-1599234.5002437278,-5295388.46397168,1260,3986622.3476131847,-1387552.515815149,-5309114.470541782,1290,4044336.9312501587,-1174543.8751583765,-5316727.9092817195,1320,4098362.0913927853,-960436.4860200811,-5318219.746264177,1350,4148640.05014087,-745459.2742256974,-5313587.99682997,1380,4195116.304772993,-529841.9356265425,-5302837.729103542,1410,4237739.68824104,-313814.68714683066,-5285981.059373233,1440,4276462.426873973,-97608.01836807688,-5263037.139336053,1470,4311240.195487522,118547.55898022183,-5234032.135216145,1500,4342032.169446345,334421.7594799535,-5198999.198775582,1530,4368801.073929062,549784.773056322,-5157978.4302456835,1560,4391513.230197733,764407.5131503942,-5111016.833216451,1590,4410138.598835844,978061.8639511992,-5058168.261531201,1620,4424650.819842145,1190520.926617592,-4999493.358242907,1650,4435027.249842796,1401559.263000253,-4935059.486698114,1680,4441248.9955978235,1610953.1396364877,-4864940.653823659,1710,4443300.9447466,1818480.7676951052,-4789217.425700598,1740,4441171.79302222,2023922.5416444354,-4707976.835519076,1770,4434854.068066349,2227061.2753689946,-4621312.284016733,1800,4424344.150360626,2427682.4344555633,-4529323.432512483,1830,4409642.2897500275,2625574.3674427317,-4432116.088656149,1860,4390752.619469898,2820528.5317115607,-4329802.085023283,1890,4367683.166205153,3012339.716818381,-4222499.150693144,1920,4340445.85671692,3200806.263802785,-4110330.7759561455,1950,4309056.520915767,3385730.280433366,-3993426.070305395,1980,4273534.891194315,3566917.852348791,-3871919.613875268,2010,4233904.598970831,3744179.248685385,-3745951.3024975373,2040,4190193.1660140688,3917329.1249117586,-3615666.18655356,2070,4142431.99372352,4086186.7187128454,-3481214.303808665,2100,4090656.347983256,4250576.041664087,-3342750.5064217323,2130,4034905.3405223354,4410326.065301051,-3200434.2823307216,2160,3975221.9066219013,4565270.901579523,-3054429.571221065,2190,3911652.778952151,4715249.977708331,-2904904.575290966,2220,3844248.45883316,4860108.204085097,-2752031.565033829,2250,3773063.1817176584,4999696.137856629,-2595986.680263938,2280,3698154.8811602197,5133870.1383125605,-2436949.7266177097,2310,3619585.1481138985,5262492.516661908,-2275103.9677680368,2340,3537419.1865876773,5385431.6791033065,-2110635.913594626,2370,3451725.766951292,5502562.262241961,-1943735.1045581333,2400,3362577.173238705,5613765.263158348,-1774593.8925308166,2430,3270049.1493588495,5718928.160711771,-1603407.2183400735,2460,3174220.840600713,5817945.030418986,-1430372.3862861951,2490,3075174.7319207913,5910716.651796693,-1255688.835898492,2520,2972996.582811193,5997150.608222221,-1079557.9111978402,2550,2867775.358514719,6077161.379340178,-902182.6277366615,2580,2759603.1593001247,6150670.425128446,-723767.4376897546,2610,2648575.1436878275,6217606.263534311,-544517.993272196,2640,2534789.4512167815,6277904.538926717,-364640.9087621459,2670,2418347.1206673738,6331508.083318364,-184343.52140829526,2700,2299352.005453875,6378366.969487482,-3833.651502993307,2730,2177910.6859781803,6418438.556086537,176680.63809700613,2760,2054132.3787154136,6451687.52479368,356991.2827197488,2790,1928128.8438782997,6478085.908905793,536890.4566140245,2820,1800014.2873031204,6497613.114794819,716170.813389696,2850,1669905.2625388177,6510255.934275224,894625.7258798496,2880,1537920.5687975972,6516008.549350851,1072049.5251431968,2910,1404181.1466187914,6514872.5287554925,1248237.7383265346,2940,1268809.9710401131,6506856.816403947,1422987.325108084,2970,1131931.9420671028,6491977.711832281,1596096.9124448365,3000,993673.7743244327,6470258.842344474,1767367.027348856,3030,854163.881512698,6441731.127720982,1936600.3274202112,3060,713532.261733904,6406432.736441512,2103601.8288668245,3090,571910.3793131617,6364409.034326521,2268179.1317451214,3120,429431.0447209213,6315712.525346076,2430142.642158181,3150,286228.2941446062,6260402.784609852,2589305.7911527,3180,142437.26446363347,6198546.3839556305,2745485.250059641,3210,-1805.9304479046841,6130216.809774846,2898501.142027907,3240,-146364.32634215528,6055494.3735417435,3048177.2495056028,3270,-291100.23627789674,5974466.115009821,3194341.217427806,3300,-435875.3795359796,5887225.698223997,3336824.7518756306,3330,-580551.011915136,5793873.300452132,3475463.8139766906,3360,-724988.0556890133,5694515.494326957,3610098.8088228856,3390,-869047.2331091099,5589265.122977603,3740574.7691878797,3420,-1012589.1979721263,5478241.168769686,3866741.5338325696,3450,-1155474.6691555253,5361568.615480578,3988453.9201938715,3480,-1297564.5643778387,5239378.304203463,4105571.891258771,3510,-1438720.1343272969,5111806.783133337,4217960.716432687,3540,-1578803.097258138,4978996.151342345,4325491.126218557,3570,-1717675.7725488069,4841093.897158414,4428039.4605306005,3600,-1855201.216546484,4698252.730285688,4525487.810474162];
+            var ISSCoordinates;
 
             function addLayerCb(layer) {
                 return globeView.addLayer(layer);
@@ -45,37 +53,76 @@
             promises.push(itowns.Fetcher.json('./layers/JSONLayers/Ortho.json').then(addLayerCb));
             // Add two elevation layers.
             // These will deform iTowns globe geometry to represent terrain elevation.
-            promises.push(itowns.Fetcher.json('./layers/JSONLayers/WORLD_DTM.json').then(addLayerCb));
-            promises.push(itowns.Fetcher.json('./layers/JSONLayers/IGN_MNT_HIGHRES.json').then(addLayerCb));
+            //promises.push(itowns.Fetcher.json('./layers/JSONLayers/WORLD_DTM.json').then(addLayerCb));
+            //promises.push(itowns.Fetcher.json('./layers/JSONLayers/IGN_MNT_HIGHRES.json').then(addLayerCb));
 
-            function addMeshToScene() {
-                // creation of the new mesh (a cylinder)
+            // Create satellite mesh (sphere)
+            /*
                 var THREE = itowns.THREE;
-                var geometry = new THREE.SphereGeometry(100000, 12, 12);
+                var geometry = new THREE.SphereGeometry(80000, 12, 12);
                 var material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-                var mesh = new THREE.Mesh(geometry, material);
+                var meshSatellite = new THREE.Mesh(geometry, material);
+                globeView.scene.add(meshSatellite);
+            */
+            var THREE = itowns.THREE;
+            var satelliteModel;
+            var controls;
+            var lastPosition = new THREE.Vector3();  // Last known Satellite position
+            var motionDirection = new THREE.Vector3(); // Satellite direction of motion
 
-                // get the position on the globe, from the camera
-                globeView.controls.updateCameraTransformation();
-                var cameraTargetPosition = globeView.controls.getCameraTargetGeoPosition();
+            // Load a gltf model
+            function loadModel(url){
 
-                // position of the mesh
-                var meshCoord = cameraTargetPosition;
-                meshCoord.setAltitude(cameraTargetPosition.altitude() + 30);
+                var loader = new THREE.GLTFLoader();
+                // Load a glTF resource
+                loader.load(
+                    // resource URL
+                    url,
+                    // called when the resource is loaded
+                    function ( gltf ) {
 
-                // position and orientation of the mesh
-                mesh.position.copy(meshCoord.as(globeView.referenceCrs).xyz());
-                mesh.lookAt(new THREE.Vector3(0, 0, 0));
-                mesh.rotateX(Math.PI / 2);
+                        satelliteModel = gltf.scene;
+                        globeView.scene.add( satelliteModel );
+                        satelliteModel.position.copy(ISSCoordinates);
+                        satelliteModel.scale.multiplyScalar(100);
+                        satelliteModel.updateMatrixWorld();
 
-                // update coordinate of the mesh
-                mesh.updateMatrixWorld();
+                        gltf.animations; // Array<THREE.AnimationClip>
+                        gltf.scene; // THREE.Scene
+                        gltf.scenes; // Array<THREE.Scene>
+                        gltf.cameras; // Array<THREE.Camera>
+                        gltf.asset; // Object
 
-                // add the mesh to the scene
-                globeView.scene.add(mesh);
+                    },
+                    // called while loading is progressing
+                    function ( xhr ) {
 
-                // make the object usable from outside of the function
-                globeView.mesh = mesh;
+                        console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+
+                    },
+                    // called when loading has errors
+                    function ( error ) {
+
+                        console.log( 'An error happened' );
+
+                    }
+                );
+            }
+
+            function placeCamera(position, lookAt) {
+                globeView.camera.camera3D.position.set(position.x, position.y, position.z);
+                globeView.camera.camera3D.lookAt(lookAt);
+                // create controls
+                controls = new itowns.FirstPersonControls(globeView, { focusOnClick: true });
+             //   debugGui.add(controls.options, 'moveSpeed', 1, 100).name('Movement speed');
+
+                globeView.notifyChange(globeView.camera.camera3D);
+             }
+
+
+            function computeOrientation(p1, p2){
+
+
             }
 
             // Listen for globe full initialisation event
@@ -84,13 +131,124 @@
                 console.info('Globe initialized');
                 Promise.all(promises).then(function init() {
                     menuGlobe.addImageryLayersGUI(globeView.getLayers(function filterColor(l) { return l.type === 'color'; }));
-                    menuGlobe.addElevationLayersGUI(globeView.getLayers(function filterElevation(l) { return l.type === 'elevation'; }));
+                    menuGlobe.addGUI('RealisticLighting', false, globeView.setRealisticLightingOn.bind(globeView));
 
-                    addMeshToScene();
+                    // Sample ISS TLE Data from 1 august 2018
+                    var issLine1 = "1 25544U 98067A   18213.24097876  .00000784  00000-0  19319-4 0  9994";
+                    var issLine2 = "2 25544  51.6419 154.1578 0005237  13.6462 129.8688 15.53784946125527";
 
-                    globeView.controls.setTilt(60, true);
+                    // Create a satellite record
+                    var issSatRec = SGP4.twoline2rv(issLine1, issLine2, SGP4.wgs84());
+                    console.log(globeView.camera);
+                    //var cam = globeView.camera.camera3D.clone();
+                   // globeView.camera.camera3D = null;
+                   // globeView.camera.camera3D = new THREE.PerspectiveCamera( 45, 1920 / 1080, 10, 10000000 );
+                /*    globeView.camera.camera3D.position.set(8000000,8000000,8000000);
+                    globeView.camera.camera3D.updateMatrixWorld(true);
+                    globeView.camera.camera3D.lookAt( {x: 2511898.50816151, y: -3997639.5639961394, z: -4877003.964348924});//new itowns.THREE.Vector3(0, 0, 0));
+*/
+
+                    controls = new THREE.OrbitControls(globeView.camera.camera3D, viewerDiv);
+                    controls.minDistance = 1;
+                    controls.addEventListener('change', function _() { globeView.notifyChange(globeView.camera.camera3D); });
+                    globeView.controls = controls;
+                    var inc = 0;
+
+                    
+                            // UGLY Line
+                            var material = new THREE.LineBasicMaterial({
+                                color: 0xaaaaaa,
+                                transparent:true,
+                                depthTest:false
+                            });
+
+                            var geometry = new THREE.Geometry();
+                            var geometryS = new THREE.SphereGeometry(12000, 6, 6);
+                            var materialS = new THREE.MeshBasicMaterial({ color: 0xf4427d });
+                           // var line = new THREE.Line( geometry, material );
+                          //  globeView.scene.add( line );
+
+
+                    
+
+
+                    // This will compute position every second
+                    function getCurrentPosition() {
+
+                        // Current time
+                        var now = new Date();
+                        inc += 1;
+                        // ugly increment for faster
+                        now.setSeconds(now.getSeconds() + inc);
+                        
+                        // This will contain ECI (http://en.wikipedia.org/wiki/Earth-centered_inertial) coordinates of position and velocity of the satellite
+                        var positionAndVelocity = SGP4.propogate(issSatRec, now.getUTCFullYear(), now.getUTCMonth() + 1, now.getUTCDate(), now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds());
+                        var pos = positionAndVelocity.position;
+                        // GMST required 
+                        var gmst = SGP4.gstimeFromDate(now.getUTCFullYear(), now.getUTCMonth() + 1, now.getUTCDate(), now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds());
+                        // Compute Earth centered frame coordinates
+                        var posECF = SGP4.eciToEcf(positionAndVelocity.position, gmst);
+                        ISSCoordinates = new THREE.Vector3(posECF.x, posECF.y, posECF.z).multiplyScalar(1000);
+                        motionDirection = ISSCoordinates.clone().sub(lastPosition);
+                        
+                        //addMeshToSceneAtPos(new itowns.THREE.Vector3(posECF.x, posECF.y, posECF.z).multiplyScalar(1000));
+                        
+                        // We compute satellite position and orientation
+                        if(satelliteModel){
+                            satelliteModel.position.copy(ISSCoordinates);
+                            satelliteModel.up = lastPosition;
+                            satelliteModel.lookAt(new THREE.Vector3(0,0,0));
+                            satelliteModel.rotateX(-Math.PI / 2);
+                            satelliteModel.rotateY(Math.PI / 2);
+                            satelliteModel.updateMatrixWorld();
+
+                        //    globeView.camera.camera3D.position.copy(ISSCoordinates.multiplyScalar(1.1));
+                            globeView.camera.camera3D.lookAt(ISSCoordinates);
+                            globeView.camera.camera3D.updateMatrixWorld(true);
+                            
+                            globeView.notifyChange(globeView.camera.camera3D);
+
+                            var sphere = new THREE.Mesh(geometryS, materialS);
+                            sphere.position.copy(ISSCoordinates);
+                            sphere.updateMatrixWorld();
+                            globeView.scene.add(sphere);
+
+                        }
+                        lastPosition = ISSCoordinates;
+                        //   mesh.lookAt(new THREE.Vector3(0, 0, 0));
+                        //   mesh.rotateX(Math.PI / 2);
+                       // globeView.camera.camera3D.lookAt(ISSCoordinates);
+                        //globeView.camera.camera3D.updateProjectionMatrix();
+
+                       // placeCamera(new THREE.Vector3(ISSCoordinates.clone().multiplyScalar(1.1)), ISSCoordinates);
+                        // Recursive call every second
+                        setTimeout(getCurrentPosition, 30);
+
+
+                        
+                    }
+                    getCurrentPosition();
+
+
+
+                    //globeView.controls.setTilt(60, true);
                 }).catch(console.error);
             });
+
+            var script = document.createElement('script');
+            //var THREE = itowns.THREE;
+            script.type = 'text/javascript';
+            script.src = 'https://cdn.rawgit.com/mrdoob/three.js/r' + THREE.REVISION + '/examples/js/loaders/GLTFLoader.js';
+            script.onload = function l() {
+                loadModel('iss/scene.gltf');
+            };
+            document.body.appendChild(script);
+            
+            var script2 = document.createElement('script');
+            //var THREE = itowns.THREE;
+            script2.type = 'text/javascript';
+            script2.src = 'https://cdn.rawgit.com/mrdoob/three.js/r' + THREE.REVISION + '/examples/js/controls/OrbitControls.js';
+            document.body.appendChild(script2);
         </script>
     </body>
 </html>
