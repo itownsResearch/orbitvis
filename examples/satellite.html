@@ -177,7 +177,7 @@
 
                         // Current time
                         var now = new Date();
-                        inc += 1;
+                        inc += 0;
                         // ugly increment for faster
                         now.setSeconds(now.getSeconds() + inc);
                         
@@ -213,6 +213,29 @@
                             sphere.updateMatrixWorld();
                             globeView.scene.add(sphere);
 
+                            
+var spotLight = new THREE.SpotLight( 0xffffff );
+spotLight.position.copy(ISSCoordinates.clone().addScalar(100000));
+spotLight.updateMatrixWorld();
+spotLight.target = new THREE.Object3D();
+spotLight.castShadow = true;
+var sphere = new THREE.Mesh(geometryS, new THREE.MeshBasicMaterial());
+                            sphere.position.copy(spotLight.position);
+                            sphere.updateMatrixWorld();
+                            globeView.scene.add(sphere);
+
+
+spotLight.shadow.mapSize.width = 1024;
+spotLight.shadow.mapSize.height = 1024;
+
+spotLight.shadow.camera.near = 5;
+spotLight.shadow.camera.far = 50000000;
+spotLight.shadow.camera.fov = 40;
+
+globeView.scene.add( spotLight );
+var spotLightHelper = new THREE.SpotLightHelper( spotLight );
+globeView.scene.add( spotLightHelper );
+
                         }
                         lastPosition = ISSCoordinates;
                         //   mesh.lookAt(new THREE.Vector3(0, 0, 0));
@@ -222,7 +245,7 @@
 
                        // placeCamera(new THREE.Vector3(ISSCoordinates.clone().multiplyScalar(1.1)), ISSCoordinates);
                         // Recursive call every second
-                        setTimeout(getCurrentPosition, 30);
+                        setTimeout(getCurrentPosition, 3000);
 
 
                         
