@@ -191,10 +191,10 @@ function GlobeView(viewerDiv, coordCarto, options = {}) {
 
     const wgs84TileLayer = createGlobeLayer('globe', options);
 
-    const sun = new THREE.DirectionalLight();
-    sun.position.set(-0.5, 0, 1);
-    sun.updateMatrixWorld(true);
-    wgs84TileLayer.object3d.add(sun);
+    this.sun = new THREE.DirectionalLight();
+    this.sun.position.set(-0.5, 0, 1);
+    this.sun.updateMatrixWorld(true);
+    wgs84TileLayer.object3d.add(this.sun);
 
     this.addLayer(wgs84TileLayer);
 
@@ -443,7 +443,7 @@ GlobeView.prototype.getPickingPositionFromDepth = function getPickingPositionFro
 };
 
 GlobeView.prototype.setRealisticLightingOn = function setRealisticLightingOn(value) {
-    const coSun = CoordStars.getSunPositionInScene(new Date().getTime(), 48.85, 2.35).normalize();
+    const coSun = CoordStars.getSunPositionInSceneAtTime().normalize();
 
     this.lightingPos = coSun.normalize();
 
@@ -460,11 +460,31 @@ GlobeView.prototype.setRealisticLightingOn = function setRealisticLightingOn(val
 };
 
 GlobeView.prototype.setLightingPos = function setLightingPos(pos) {
-    const lightingPos = pos || CoordStars.getSunPositionInScene(this.ellipsoid, new Date().getTime(), 48.85, 2.35);
+    const lightingPos = pos || CoordStars.getSunPositionInSceneAtTime();//this.ellipsoid, new Date().getTime(), 48.85, 2.35);
 
     this.updateMaterialUniform('lightPosition', lightingPos.clone().normalize());
     this.notifyChange(this.wgs84TileLayer);
 };
+
+GlobeView.prototype.setSunPositionAtTime = function setSunPositionAtTime(d){
+
+    const coSun = CoordStars.getSunPositionInSceneAtTime(d).normalize();
+
+    this.lightingPos = coSun.normalize();
+    this.sun.position.copy(coSun);
+    this.sun.updateMatrixWorld(true);
+    console.log(this.sun.position);
+
+    const lighting = this.wgs84TileLayer.lighting;
+    lighting.enable = true;
+    lighting.position = coSun;
+
+    this.atmosphere.updateLightingPos(coSun);
+
+    this.updateMaterialUniform('lightingEnabled', true);
+    this.updateMaterialUniform('lightPosition', coSun);
+    this.notifyChange(this.wgs84TileLayer);
+}
 
 GlobeView.prototype.updateMaterialUniform = function updateMaterialUniform(uniformName, value) {
     for (const n of this.wgs84TileLayer.level0Nodes) {
