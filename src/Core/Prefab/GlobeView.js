@@ -185,7 +185,7 @@ function GlobeView(viewerDiv, coordCarto, options = {}) {
     this.camera.setPosition(positionCamera);
     this.camera.camera3D.lookAt({ x: 0, y: 0, z: 0 });
     this.camera.camera3D.near = Math.max(15.0, 0.000002352 * size);
-    this.camera.camera3D.far = size * 10;
+    this.camera.camera3D.far = size * 50;
     this.camera.camera3D.updateProjectionMatrix();
     this.camera.camera3D.updateMatrixWorld(true);
 
@@ -473,7 +473,6 @@ GlobeView.prototype.setSunPositionAtTime = function setSunPositionAtTime(d){
     this.lightingPos = coSun.normalize();
     this.sun.position.copy(coSun);
     this.sun.updateMatrixWorld(true);
-    console.log(this.sun.position);
 
     const lighting = this.wgs84TileLayer.lighting;
     lighting.enable = true;

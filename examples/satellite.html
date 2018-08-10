@@ -61,7 +61,8 @@
             var controls;
             var lastPosition = new THREE.Vector3();  // Last known Satellite position
             var motionDirection = new THREE.Vector3(); // Satellite direction of motion
-            var spotLight = new THREE.SpotLight( 0xfff1c9, 1., 1000000, 60);  // SpotLight following ISS
+            var spotLight = new THREE.SpotLight( 0xfff1c9, 1., 500000, 60);  // SpotLight following ISS
+            var solarPanels = []; //new THREE.Object3D(); // Future Reference to the satellite solar panels
 
             // Load a gltf model
             function loadModel(url){
@@ -86,6 +87,68 @@
                         gltf.cameras; // Array<THREE.Camera>
                         gltf.asset; // Object
 
+                        // We look for the 4 solar panel child mesh from the model
+                        // We extract them (add a pivot to their vertices) so they have their own frame
+                        satelliteModel.traverse( function(child) {
+                            if (child.name.includes("ObjectsModulespaportinpapi-ani_w_goldcellslwo1")) {
+                                for (var a = 0; a<4; ++a){
+                                    var m = child.children[a];
+                                    solarPanels.push(m);
+                                    var pos = m.geometry.attributes.position.array;
+                                    for(var i = 0; i< pos.length; i+=3){
+                                        pos[i+2] += 1350;
+                                    }
+                                   m.position.z -=1350;
+                                }
+                            }
+
+                            if (child.name.includes("ObjectsModulespastbdinpasi-ani_w_goldcellslwo1")) {
+                                for (var a = 0; a<4; ++a){
+                                    var m = child.children[a];
+                                    solarPanels.push(m);
+                                    var pos = m.geometry.attributes.position.array;
+                                    for(var i = 0; i< pos.length; i+=3){
+                                        pos[i+2] -= 1350;
+                                    }
+                                   m.position.z +=1350;
+                                }
+        
+                            }
+
+                             if (child.name.includes("ObjectsModulespaportoutpapo-ani_w_goldcellslwo1")) {
+                                for (var a = 0; a<4; ++a){
+                                    var m = child.children[a];
+                                    solarPanels.push(m);
+                                    var pos = m.geometry.attributes.position.array;
+                                    for(var i = 0; i< pos.length; i+=3){
+                                        pos[i+2] += 1850;
+                                    }
+                                   m.position.z -=1850;
+                                }
+                            }
+
+                            if (child.name.includes("ObjectsModulespastbdoutpaso-ani_w_goldcellslwo1")) {
+                                for (var a = 0; a<4; ++a){
+                                    var m = child.children[a];
+                                    solarPanels.push(m);
+                                    var pos = m.geometry.attributes.position.array;
+                                    for(var i = 0; i< pos.length; i+=3){
+                                        pos[i+2] -= 1850;
+                                    }
+                                   m.position.z +=1850;
+                                }
+                            }
+
+
+
+                          //  ObjectsModulespaportoutpapo-ani_w_goldcellslwo1
+                          // ObjectsModulespastbdoutpaso-ani_w_goldcellslwo1
+
+
+                        });
+
+                       
+                        
                     },
                     // called while loading is progressing
                     function ( xhr ) {
@@ -116,7 +179,7 @@
              function addCloudSatelliteImagery(){
                 // Beware, the latitude values are acting weird. GetCap says minx="-90.0658" maxx="89.9779" but it seems unstable           
                 var texture = new THREE.TextureLoader().load(" http://realearth.ssec.wisc.edu/api/image?products=globalir&bounds=-89,-180,89,180&width=2048&height=2048");
-                var cloudMaterial = new THREE.MeshLambertMaterial({map:texture, transparent:true, opacity:.8, blending:THREE.CustomBlending /*alphaTest : 0.8*/});
+                var cloudMaterial = new THREE.MeshLambertMaterial({map:texture, transparent:true, opacity:1, blending:THREE.CustomBlending /*alphaTest : 0.8*/});
                 cloudMaterial.blendEquation = THREE.AddEquation; //default
                 cloudMaterial.blendSrc = THREE.SrcAlphaFactor; //default
                 cloudMaterial.blendDst = THREE.SrcAlphaFactor;//THREE.OneMinusSrcAlphaFactor; //default
@@ -135,6 +198,13 @@
                 }
                 sphere.rotation.x = Math.PI/2;
                 sphere.updateMatrixWorld();
+                globeView.scene.add(sphere);
+             }
+
+             function addStars(){
+                var texture = new THREE.TextureLoader().load("iss/starmap_8k.jpg");
+                var starsMaterial = new THREE.MeshBasicMaterial({map:texture, side:THREE.DoubleSide, transparent:true, opacity: 0.5, blending:THREE.NoBlending});
+                var sphere = new THREE.Mesh(new THREE.SphereGeometry(250000000, 64, 64), starsMaterial);
                 globeView.scene.add(sphere);
              }
 
@@ -187,6 +257,9 @@
 
                     // Add clouds satellite IR Imagery
                     addCloudSatelliteImagery();
+
+                    // Add stars
+                    //addStars();
                     //var cam = globeView.camera.camera3D.clone();
                    // globeView.camera.camera3D = null;
                    // globeView.camera.camera3D = new THREE.PerspectiveCamera( 45, 1920 / 1080, 10, 10000000 );
@@ -216,7 +289,7 @@
                           //  globeView.scene.add( line );
 
 
-                    
+                    var pivotObj = new THREE.Object3D();
 
 
                     // This will compute position every second
@@ -262,16 +335,45 @@
                             globeView.scene.add(sphere);
 
                             // Illuminate the satellite
-                            spotLight.position.copy(ISSCoordinates.clone().multiplyScalar(1.04));
+                            spotLight.position.copy(ISSCoordinates.clone().multiplyScalar(1.02));
                             spotLight.updateMatrixWorld();
 
                             globeView.setSunPositionAtTime(now);
+                            for(var i = 0; i < solarPanels.length; ++i){
+                             //   solarPanels[i].lookAt(globeView.sun.position);
+                                //solarPanels[0].updateMatrixWorld();
+                                solarPanels[i].rotation.x += 0.1;
+                            }
 
+                            /*
+                            solarPanels[0].rotation.x += 0.1;
+                            solarPanels[0].updateMatrixWorld();
+                            */
+                          //  solarPanels[1].rotation.x += 0.1;
                             
 
-        
-                          //  globeView.scene.add( spotLight );
+                            //solarPanels.lookAt(globeView.sun.position);
+                   /*         
+                            // get position of the solar panel center
+                            var pivot = satelliteModel.position.clone().sub(new THREE.Vector3(0, 0, 1211.0985107421875));
+                            //pivotObj = new THREE.Object3D();
+                            
+                            pivotObj.position.copy(pivot);
+                            pivotObj.updateMatrixWorld();
+                            globeView.scene.add(pivotObj);
+                            
+                            pivotObj.add(solarPanels);
 
+                            pivotObj.rotation.x += 0.1;
+                          //  solarPanels.rotation.x += 0.1;
+
+                            var s = new THREE.Mesh(geometryS, new THREE.MeshBasicMaterial());
+                            s.position.copy(pivot);
+                            s.updateMatrixWorld();
+                            globeView.scene.add(s);
+                    */        
+                            
+                            //var q = new THREE.Quaternion.setFromAxisAngle 
 
                         }
                         //console.log(getsunpos());
@@ -284,8 +386,6 @@
                        // placeCamera(new THREE.Vector3(ISSCoordinates.clone().multiplyScalar(1.1)), ISSCoordinates);
                         // Recursive call every second
                         setTimeout(getCurrentPosition, 30);
-
-
                         
                     }
                     getCurrentPosition();
