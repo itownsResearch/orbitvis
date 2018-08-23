@@ -29,7 +29,7 @@
             var viewerDiv = document.getElementById('viewerDiv');
 
             // Instanciate iTowns GlobeView*
-            var globeView = new itowns.GlobeView(viewerDiv, positionOnGlobe, {noControls: true});
+            var globeView = new itowns.GlobeView(viewerDiv, positionOnGlobe, {noControls: false});
             
             var promises = [];
 
@@ -64,6 +64,9 @@
             var spotLight = new THREE.SpotLight( 0xfff1c9, 1., 500000, 60);  // SpotLight following ISS
             var solarPanels = []; //new THREE.Object3D(); // Future Reference to the satellite solar panels
             var sunSphere;
+            var clouds;  // PointCloud sprite for volumetric clouds
+            var radarTex; // Texture from radar satellite imagery for clouds
+            var globalIterator = 0; // Time used for animation
 
             // Load a gltf model
             function loadModel(url){
@@ -179,9 +182,9 @@
 
              function addCloudSatelliteImagery(){
                 // Beware, the latitude values are acting weird. GetCap says minx="-90.0658" maxx="89.9779" but it seems unstable           
-                var texture = new THREE.TextureLoader().load("iss/clouds.png");
+                radarTex = new THREE.TextureLoader().load("iss/clouds.png");
                     //" http://realearth.ssec.wisc.edu/api/image?products=globalir&bounds=-89,-180,89,180&width=2048&height=2048");
-                var cloudMaterial = new THREE.MeshLambertMaterial({alphaMap:texture, lights:true, reflectivity: 1, transparent:true, opacity:1. });
+                var cloudMaterial = new THREE.MeshLambertMaterial({alphaMap:radarTex, lights:true, reflectivity: 1, transparent:true, opacity:1. });
 
 
                 var sphere = new THREE.Mesh(new THREE.SphereGeometry(1.002, 64, 64).scale(6378137,6356752.3142451793,6378137), cloudMaterial);
@@ -200,6 +203,219 @@
                 sphere.updateMatrixWorld();
                 globeView.scene.add(sphere);
              }
+
+            function getImageData( image ) {
+
+                var canvas = document.createElement( 'canvas' );
+                canvas.width = image.width;
+                canvas.height = image.height;
+
+                var context = canvas.getContext( '2d' );
+                context.drawImage( image, 0, 0 );
+
+                return context.getImageData( 0, 0, image.width, image.height );
+
+            }
+
+            function getPixel( imagedata, x, y ) {
+
+                var position = ( x + imagedata.width * y ) * 4, data = imagedata.data;
+                return { r: data[ position ], g: data[ position + 1 ], b: data[ position + 2 ], a: data[ position + 3 ] };
+
+            }
+
+
+            function addVolumetricClouds(){
+
+                 const cloudsVertexShader = `
+                    
+                    #include <logdepthbuf_pars_vertex>
+                    /*    
+                    uniform vec3 firstPoint;
+                    uniform float len;
+                    uniform float time;
+                    uniform float animated;
+                    varying vec3 vNormal;
+                    varying float distStart;
+                    vec3 newPos;
+                    */
+
+                    attribute float alpha;
+                    attribute float scale;
+                    uniform vec4 origin;
+                    uniform vec3 sunPos;
+                    uniform sampler2D radarImg;
+                    uniform float time;
+                    varying float angle;  
+                    varying float vAlpha;  
+
+                    void main() 
+                    {
+                        /*
+                        vNormal = normal;
+                        distStart = distance(position, firstPoint) / len;  // Normalized distance
+                        float t = mod(time, 50.) / 50.;  // Normalized time
+                        float swell = 0.; //distStart * 10. - t * 10.;//10. - (distStart - (mod(time,1000.) / 100.)) / 100.;
+                        if(abs(distStart - t) < 0.1 && animated > 0.) swell = 5.;
+                        newPos = position + vNormal * swell; //mod(distStart, mod(time,100.))  ;//position + vNormal * distStart/30. * time / 100.; 
+                        */
+
+                        vAlpha = alpha;
+                        // gl_PointSize = 15.;
+
+                        // Compute position using radarImg and ID
+
+
+                        // Lighting
+                        angle = dot(sunPos, normalize(position));
+
+                        // Angle camera/cloud
+                        //var ang = dot()
+
+                        //gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);//newPos, 1.0 );
+                        vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+                        float cameraDist = distance( mvPosition, origin );
+                        vec4 pos = mvPosition;
+                        gl_PointSize = max(scale,0.6) * 220000000.0 / cameraDist;
+                        gl_Position = projectionMatrix * mvPosition;
+                        #include <logdepthbuf_vertex>
+                    }
+                        
+                `;
+
+                const cloudsFragmentShader = `
+                    
+                    #include <logdepthbuf_pars_fragment>
+                    //varying vec3 vNormal;
+                    //varying float distStart;
+
+                    
+                    uniform sampler2D tDiffuse;
+                    uniform sampler2D radarImg;
+                    uniform vec3 sunPos;
+                    varying float angle;  
+                    varying float vAlpha;  
+
+                    void main() 
+                    {
+                        #include <logdepthbuf_fragment>
+                        vec4 col = texture2D(tDiffuse, gl_PointCoord);
+                        gl_FragColor = vec4(col.rgb * 1.2, col.a);           /* * angle*/; //vec4(1.,0.,0.,1.); //vec4(vNormal.x, vNormal.y, vNormal.z, 1.) + vec4(0.8); //vec4(1.,0.,0.,1.);
+                        gl_FragColor.a *=  pow(angle, 2.) *  vAlpha * 2.;
+                        if (angle < 0. ) gl_FragColor.a = 0.;
+                    }
+                        
+                `;
+
+                var geometry = new THREE.BufferGeometry();
+                var positions = [];
+                var alphas = [];
+                var scales = [];
+                var dist = 6400000;
+                var nbPoints = 1000000;
+                var thresholdLuminance = 0.1;//.15;
+
+
+                radarTex = new THREE.TextureLoader().load("http://realearth.ssec.wisc.edu/api/image?products=globalir&bounds=-89,-180,89,180&width=2048&height=2048",// onLoad callback
+                    function ( texture ) {
+                    
+                        var imagedata = getImageData( texture.image );
+                        var w = imagedata.width;
+                        var h = imagedata.height;
+                        var minY = 0; // imagedata.width / 7;
+                        var maxY = h; // 6 * imagedata.width / 7;
+
+                        for(var i = 0; i < w; i+=1){
+
+                            for(var j = minY; j < maxY; j+=1){
+
+                                    var a = (j/h) * Math.PI - Math.PI / 2;
+                                    a = Math.sin(a);
+                                    var uvy = Math.log(( 1 + a ) / ( 1 - a )) / (6* Math.PI); // normally: / (4 * Math.PI)
+                                    uvy += 0.5;       
+                                    // Get pixel real:
+                                    var p = getPixel(imagedata, i, Math.floor(uvy * h));
+                                    // Enhance contrast using a Sigmoid function
+                                    
+                                    var v = p.r / 255; if (i == 500 && j == 50 ) console.log("a",p,v);
+                                    //  v = v*2 - 1;
+                                    //  v = 1 / (1 + Math.exp(-v)) -0.5; 
+                                    v = 0.5 + 2 * (v - 0.5);
+                                    if (i == 500 && j == 50 ) console.log("b",p,v);
+                                    // we subsample more around the poles and filter light clouds
+                                    if(v > thresholdLuminance && Math.random() * j > h/8 &&  (1+Math.random()) * j <  6*h/8 /*&& Math.random()>0.5*/){
+                                        // We got coords i,y between 0,1
+                                        var teta = Math.PI + i/w * 2 * Math.PI;
+                                        var phi  = (j/h) * Math.PI; //uvy * Math.PI;
+                                        // Introduce noise
+                                        teta += Math.random() * 0.005;
+                                        phi += Math.random() * 0.005;
+                                        // Using spherical coords we compute cartesian coordinates
+                                        var d = dist + Math.random() * 2000;  // add noise to altitude and other coords optionally
+                                        var x = d * Math.sin(phi) * Math.cos(teta) //+ Math.random() * 10000;
+                                        var y = d * Math.sin(phi) * Math.sin(teta) //+ Math.random() * 10000;
+                                        var z = d * Math.cos(phi) //+ Math.random() * 100;;
+                                        positions.push( x, y, z );
+                                        alphas.push( v );
+                                        scales.push(Math.random()); // Used to introduce irregular clouds size and also for motion
+                                    }
+                            
+                            }
+
+                        }
+                        console.log(positions.length/3);
+                        geometry.addAttribute( 'position', new THREE.Float32BufferAttribute( positions, 3 ) );
+                        geometry.addAttribute( 'alpha', new THREE.Float32BufferAttribute( alphas, 1 ) );
+                        geometry.addAttribute( 'scale', new THREE.Float32BufferAttribute( scales, 1 ) );
+                        geometry.computeBoundingSphere();
+                        
+                        var shaderMaterial = new THREE.ShaderMaterial( {
+
+                            uniforms: { 
+                                tDiffuse: {type: "t", value: new THREE.TextureLoader().load("iss/cloudTexture.png")},
+                                radarImg: {type: "t", value: radarTex},
+                                sunPos: new THREE.Uniform(globeView.sun.position),
+                                time: new THREE.Uniform(globalIterator)
+                            },
+                            vertexShader: cloudsVertexShader,
+                            fragmentShader: cloudsFragmentShader,
+
+                        } );
+                        shaderMaterial.transparent = true;
+                        shaderMaterial.sortParticles = true;
+                        shaderMaterial.sizeAttenuation = false;
+                        shaderMaterial.depthWrite = false;
+                        shaderMaterial.blending = THREE.NormalBlending;
+                
+                        clouds = new THREE.Points( geometry, shaderMaterial/*starsMaterial*/ );
+                        //clouds.rotation.x = Math.PI/2;
+                       // clouds.updateMatrixWorld();
+                        globeView.scene.add( clouds );
+
+                    },
+
+                );
+                
+
+
+                // We create one 3D particle for each pixel of cloud in the image using an intensity check and specifying an alpha
+            //    console.log(radarTex);
+/*
+				for ( var i = 0; i < nbPoints; i ++ ) {
+                    var d = dist + Math.random() * 500;
+                    var teta = Math.random() * 2 * Math.PI;
+                    var phi  = Math.random() * Math.PI;
+                    var x = d * Math.sin(teta) * Math.cos(phi);
+                    var y = d * Math.sin(teta) * Math.sin(phi);
+                    var z = d * Math.cos(teta);
+                    positions.push( x, y, z );
+                    alphas.push( new THREE.Vector2(teta,phi) );
+                }
+                */
+
+
+             }
+
 
              function addStars(){
                 var texture = new THREE.TextureLoader().load("iss/starmap_8k.jpg");
@@ -264,8 +480,9 @@
               //      globeView.scene.add( directionalLight );
 
                     // Add clouds satellite IR Imagery
-                    addCloudSatelliteImagery();
+                    // addCloudSatelliteImagery();
                     addSun();
+                    addVolumetricClouds();
 
                     // Add stars
                     //addStars();
@@ -276,11 +493,12 @@
                     globeView.camera.camera3D.updateMatrixWorld(true);
                     globeView.camera.camera3D.lookAt( {x: 2511898.50816151, y: -3997639.5639961394, z: -4877003.964348924});//new itowns.THREE.Vector3(0, 0, 0));
 */
-
+/*
                     controls = new THREE.OrbitControls(globeView.camera.camera3D, viewerDiv);
                     controls.minDistance = 1;
                     controls.addEventListener('change', function _() { globeView.notifyChange(globeView.camera.camera3D); });
                     globeView.controls = controls;
+             */       
                     var inc = 0;
 
                     
@@ -332,7 +550,7 @@
                             satelliteModel.updateMatrixWorld();
 
                         //    globeView.camera.camera3D.position.copy(ISSCoordinates.multiplyScalar(1.1));
-                            globeView.camera.camera3D.lookAt(ISSCoordinates);
+                        //    globeView.camera.camera3D.lookAt(ISSCoordinates);
                             globeView.camera.camera3D.updateMatrixWorld(true);
                             
                             globeView.notifyChange(globeView.camera.camera3D);
@@ -354,9 +572,15 @@
                                // solarPanels[i].rotation.x += 0.1;
                               //  solarPanels[i].updateMatrixWorld();
                             }
-                            console.log(satelliteModel.rotation.z /*, solarPanels[0].rotation.z*/);
+                           // console.log(satelliteModel.rotation.z /*, solarPanels[0].rotation.z*/);
                             sunSphere.position.copy(globeView.sun.position.clone().multiplyScalar(100000000));
                             sunSphere.updateMatrixWorld();
+
+                            if(clouds){
+                                clouds.material.uniforms.sunPos.value = globeView.sun.position;
+                                clouds.material.uniforms.time = globalIterator;
+                                globalIterator++;
+                            }
                             /*
                             solarPanels[0].rotation.x += 0.1;
                             solarPanels[0].updateMatrixWorld();
