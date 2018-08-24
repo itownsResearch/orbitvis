@@ -266,8 +266,7 @@
                         // Compute position using radarImg and ID
 
 
-                        // Lighting
-                        angle = dot(sunPos, normalize(position));
+                        
 
                         // Angle camera/cloud
                         //var ang = dot()
@@ -275,9 +274,14 @@
                         //gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);//newPos, 1.0 );
                         vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
                         float cameraDist = distance( mvPosition, origin );
-                        vec4 pos = mvPosition;
                         gl_PointSize = max(scale,0.6) * 220000000.0 / cameraDist;
-                        gl_Position = projectionMatrix * mvPosition;
+
+                        vec3 pos = vec3(position.x + scale * time*1000., position.y, position.z);
+
+                        // Lighting
+                        angle = dot(sunPos, normalize(pos));
+                        
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.);
                         #include <logdepthbuf_vertex>
                     }
                         
@@ -578,7 +582,7 @@
 
                             if(clouds){
                                 clouds.material.uniforms.sunPos.value = globeView.sun.position;
-                                clouds.material.uniforms.time = globalIterator;
+                                clouds.material.uniforms.time.value = globalIterator;
                                 globalIterator++;
                             }
                             /*
