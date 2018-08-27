@@ -165,10 +165,10 @@ var animationOrbitExpression = function animationOrbitExpression(root, progress)
 };
 
 // Animations
-const animationDampingMove = new AnimatedExpression({ duration: 120, root: ctrl, expression: dampingMoveAnimatedExpression, name: 'damping-move' });
-const animationZoomCenter = new AnimatedExpression({ duration: 45, root: ctrl, expression: zoomCenterAnimatedExpression, name: 'Zoom Center' });
-const animationOrbit = new AnimatedExpression({ duration: 30, root: orbit, expression: animationOrbitExpression, name: 'set Orbit' });
-const dampingOrbitalMvt = new Animation({ duration: 60, name: 'damping-orbit' });
+const animationDampingMove = new AnimatedExpression({ duration: 1200, root: ctrl, expression: dampingMoveAnimatedExpression, name: 'damping-move' });
+const animationZoomCenter = new AnimatedExpression({ duration: 450, root: ctrl, expression: zoomCenterAnimatedExpression, name: 'Zoom Center' });
+const animationOrbit = new AnimatedExpression({ duration: 15000, root: orbit, expression: animationOrbitExpression, name: 'set Orbit' });
+const dampingOrbitalMvt = new Animation({ duration: 600, name: 'damping-orbit' });
 
 // Replace matrix float by matrix double
 cameraTargetOnGlobe.matrixWorldInverse = new THREE.Matrix4();

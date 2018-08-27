@@ -9,9 +9,17 @@
         <script src="js/GUI/dat.gui/dat.gui.min.js"></script>
     </head>
     <body>
+        <div id= "help" class="help">
+                <p>Infos</p>
+                <ul>
+                </ul>
+            </div>
         <div id="viewerDiv"></div>
         <script src="js/GUI/GuiTools.js"></script>
         <script src="../dist/itowns.js"></script>
+
+
+
         <script type="text/javascript"> let module = {exports:0};
          </script>
          <!-- <script src="https://rawgit.com/joshuaferrara/node-sgp4/master/sgp4.js"></script> -->
@@ -57,8 +65,12 @@
                 globeView.scene.add(meshSatellite);
             */
             var THREE = itowns.THREE;
+            var liveOn = true;  // Real time positioning
+            var overISS = false; // Lock camera to always view ISS 
+            var lookAtISS = false;
             var satelliteModel;
             var controls;
+            var precomputedTraj = {t0:0, interval:1, arrSatPos:[]}; // Satellite precomputed positions object
             var lastPosition = new THREE.Vector3();  // Last known Satellite position
             var motionDirection = new THREE.Vector3(); // Satellite direction of motion
             var spotLight = new THREE.SpotLight( 0xfff1c9, 1., 500000, 60);  // SpotLight following ISS
@@ -67,6 +79,8 @@
             var clouds;  // PointCloud sprite for volumetric clouds
             var radarTex; // Texture from radar satellite imagery for clouds
             var globalIterator = 0; // Time used for animation
+            var incCloudSpeed = 1;  // Basic inc for clouds motion speed
+            
 
             // Load a gltf model
             function loadModel(url){
@@ -242,6 +256,7 @@
 
                     attribute float alpha;
                     attribute float scale;
+                    attribute vec3 posMotion;
                     uniform vec4 origin;
                     uniform vec3 sunPos;
                     uniform sampler2D radarImg;
@@ -260,24 +275,16 @@
                         newPos = position + vNormal * swell; //mod(distStart, mod(time,100.))  ;//position + vNormal * distStart/30. * time / 100.; 
                         */
 
+
+
                         vAlpha = alpha;
-                        // gl_PointSize = 15.;
 
-                        // Compute position using radarImg and ID
+                        vec3 pos = position + (posMotion - position) * sin(scale * time/200.);
 
-
-                        
-
-                        // Angle camera/cloud
-                        //var ang = dot()
-
-                        //gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);//newPos, 1.0 );
-                        vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+                        vec4 mvPosition = modelViewMatrix * vec4( pos, 1.0 );
                         float cameraDist = distance( mvPosition, origin );
-                        gl_PointSize = max(scale,0.6) * 220000000.0 / cameraDist;
-
-                        vec3 pos = vec3(position.x + scale * time*1000., position.y, position.z);
-
+                        gl_PointSize = max(scale,0.6) * 210000000.0 / cameraDist;
+                    
                         // Lighting
                         angle = dot(sunPos, normalize(pos));
                         
@@ -313,6 +320,7 @@
 
                 var geometry = new THREE.BufferGeometry();
                 var positions = [];
+                var posMotions = [];
                 var alphas = [];
                 var scales = [];
                 var dist = 6400000;
@@ -347,7 +355,7 @@
                                     v = 0.5 + 2 * (v - 0.5);
                                     if (i == 500 && j == 50 ) console.log("b",p,v);
                                     // we subsample more around the poles and filter light clouds
-                                    if(v > thresholdLuminance && Math.random() * j > h/8 &&  (1+Math.random()) * j <  6*h/8 /*&& Math.random()>0.5*/){
+                                    if(v > thresholdLuminance && Math.random() * j > h/12 &&  (1+Math.random()) * j <  6*h/8 /*&& Math.random()>0.5*/){
                                         // We got coords i,y between 0,1
                                         var teta = Math.PI + i/w * 2 * Math.PI;
                                         var phi  = (j/h) * Math.PI; //uvy * Math.PI;
@@ -358,8 +366,16 @@
                                         var d = dist + Math.random() * 2000;  // add noise to altitude and other coords optionally
                                         var x = d * Math.sin(phi) * Math.cos(teta) //+ Math.random() * 10000;
                                         var y = d * Math.sin(phi) * Math.sin(teta) //+ Math.random() * 10000;
-                                        var z = d * Math.cos(phi) //+ Math.random() * 100;;
+                                        var z = d * Math.cos(phi) //+ Math.random() * 100;
+                                        // Ugly motion position precomputed
+                                        var phi2 = phi + Math.random()/100;
+                                        var teta2 =  teta + Math.random()/100;
+                                        var d2 = d + Math.random() * 2000;
+                                        var x2 = d2 * Math.sin(phi2) * Math.cos(teta2) //+ Math.random() * 10000;
+                                        var y2 = d2 * Math.sin(phi2) * Math.sin(teta2) //+ Math.random() * 10000;
+                                        var z2 = d2 * Math.cos(phi2) //+ Math.random() * 100;;
                                         positions.push( x, y, z );
+                                        posMotions.push(x2, y2, z2);
                                         alphas.push( v );
                                         scales.push(Math.random()); // Used to introduce irregular clouds size and also for motion
                                     }
@@ -369,6 +385,7 @@
                         }
                         console.log(positions.length/3);
                         geometry.addAttribute( 'position', new THREE.Float32BufferAttribute( positions, 3 ) );
+                        geometry.addAttribute( 'posMotion', new THREE.Float32BufferAttribute( posMotions, 3 ) );
                         geometry.addAttribute( 'alpha', new THREE.Float32BufferAttribute( alphas, 1 ) );
                         geometry.addAttribute( 'scale', new THREE.Float32BufferAttribute( scales, 1 ) );
                         geometry.computeBoundingSphere();
@@ -459,6 +476,69 @@
                 return {sunlat:lat, sunlon:lng};
             }
 
+            function changeSpeedTime(){
+                console.log("changetime",liveOn);
+                liveOn = !liveOn;
+                liveOn ? incCloudSpeed = 1 : incCloudSpeed = 10;
+
+            }
+
+            function changeCamPosition(){
+                overISS = !overISS;
+                // globeView.controls.setRange(120000,true); // Nice slow motion
+                // globeView.controls.setTilt(60, true);
+                //globeView.controls.setCameraTargetPosition(ISSCoordinates, true);
+
+            }
+
+            function camLookAtISS(){
+                lookAtISS = !lookAtISS;
+            }
+
+            
+
+            // Function to precompute satetllite positions for satellite satRec between two dates t0, t1 (in milliseconds since 70') every t milliseconds
+            //{t0:0, interval:1, arrSatPos:[]}; // Satellite precomputed positions object
+            function precomputeSatPos(satRec, t0, t1, t){
+                precomputedTraj.interval = t;
+                precomputedTraj.t0 = t0;
+                var arrSatPos = precomputedTraj.arrSatPos;
+                //console.log(t0, t1, t);
+                for(var i = t0; i < t1; i += t){
+                    var time = new Date(i);
+                    //time.setSeconds(time.getSeconds() + t);
+                   // console.log(t0, time);
+                     // This will contain ECI (http://en.wikipedia.org/wiki/Earth-centered_inertial) coordinates of position and velocity of the satellite
+                     var positionAndVelocity = SGP4.propogate(satRec, time.getUTCFullYear(), time.getUTCMonth() + 1, time.getUTCDate(), time.getUTCHours(), time.getUTCMinutes(), time.getUTCSeconds());
+                    // GMST required 
+                    var gmst = SGP4.gstimeFromDate(time.getUTCFullYear(), time.getUTCMonth() + 1, time.getUTCDate(), time.getUTCHours(), time.getUTCMinutes(), time.getUTCSeconds());
+                    // Compute Earth centered frame coordinates
+                    var posECF = SGP4.eciToEcf(positionAndVelocity.position, gmst);
+                    ISSCoordinates = new THREE.Vector3(posECF.x, posECF.y, posECF.z).multiplyScalar(1000);
+                    arrSatPos.push(ISSCoordinates); //console.log(ISSCoordinates);
+                }
+            }
+
+
+            // Function to access precomputed position and add interpolation
+            function getPosAtTime(t){
+                var p = precomputedTraj;
+                var pos;
+                if(t > p.t0){
+                    var v = (t - p.t0) / (p.interval);
+                    var ind = Math.floor(v);
+                    var co = v - ind;
+                    var p1 = p.arrSatPos[ind];
+                    var p2 = p.arrSatPos[ind + 1];
+                    var p = p2.clone().sub(p1);
+                    pos = p1.clone().add( p.multiplyScalar(co));
+                }
+                 else
+                    pos = p.arrSatPos[0];
+
+                return pos;
+            }
+
 
             // Listen for globe full initialisation event
             globeView.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, function globeInitialized() {
@@ -467,13 +547,23 @@
                 Promise.all(promises).then(function init() {
                     menuGlobe.addImageryLayersGUI(globeView.getLayers(function filterColor(l) { return l.type === 'color'; }));
                     menuGlobe.addGUI('RealisticLighting', false, globeView.setRealisticLightingOn.bind(globeView));
+                    menuGlobe.addGUI('Time x 30', false, changeSpeedTime);
+                    menuGlobe.addGUI('Over ISS', false, changeCamPosition);
+                    menuGlobe.addGUI('look at ISS', false, camLookAtISS);
 
-                    // Sample ISS TLE Data from 1 august 2018
-                    var issLine1 = "1 25544U 98067A   18213.24097876  .00000784  00000-0  19319-4 0  9994";
-                    var issLine2 = "2 25544  51.6419 154.1578 0005237  13.6462 129.8688 15.53784946125527";
+                    // Sample ISS TLE Data from 24 august 2018 https://www.celestrak.com/NORAD/elements/stations.txt
+                    var issLine1 = "1 25544U 98067A   18235.94006556  .00000805  00000-0  19613-4 0  9991";
+                    var issLine2 = "2 25544  51.6425  41.0532 0005980  86.9575  34.3421 15.53864358129054";
 
                     // Create a satellite record
                     var issSatRec = SGP4.twoline2rv(issLine1, issLine2, SGP4.wgs84());
+                    // Precompute trajectory
+                    var t = Date.now();  // In milliseconds since midnight January 1, 1970
+                    var duration = 24 * 3600 * 1000; // One day duration in milliseconds
+                   // var b = Date.now();
+                    var endDate = t + duration;//new Date(t).setSeconds(t.getSeconds() + duration); console.log(t.getSeconds(), endDate);
+                    precomputeSatPos(issSatRec, t, endDate, 1000);
+
                     console.log(globeView.camera);
                     globeView.scene.add( spotLight );
 
@@ -525,25 +615,20 @@
 
                     // This will compute position every second
                     function getCurrentPosition() {
-
-                        // Current time
-                        var now = new Date();
-                        inc += 2;
-                        // ugly increment for faster
-                        now.setSeconds(now.getSeconds() + inc);
-                        
-                        // This will contain ECI (http://en.wikipedia.org/wiki/Earth-centered_inertial) coordinates of position and velocity of the satellite
-                        var positionAndVelocity = SGP4.propogate(issSatRec, now.getUTCFullYear(), now.getUTCMonth() + 1, now.getUTCDate(), now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds());
-                        var pos = positionAndVelocity.position;
-                        // GMST required 
-                        var gmst = SGP4.gstimeFromDate(now.getUTCFullYear(), now.getUTCMonth() + 1, now.getUTCDate(), now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds());
-                        // Compute Earth centered frame coordinates
-                        var posECF = SGP4.eciToEcf(positionAndVelocity.position, gmst);
-                        ISSCoordinates = new THREE.Vector3(posECF.x, posECF.y, posECF.z).multiplyScalar(1000);
-                        motionDirection = ISSCoordinates.clone().sub(lastPosition);
-                        
+          
                         //addMeshToSceneAtPos(new itowns.THREE.Vector3(posECF.x, posECF.y, posECF.z).multiplyScalar(1000));
                         
+                        var now = Date.now();
+                        inc += 1000;  // 1 second later
+                        if(liveOn) inc = 0;
+                        // ugly increment for faster
+                        now += inc;
+                        var oldTime = Date.now(); //.setSeconds(now.getSeconds() - 100);
+                        oldTime -= 5*1000;// 50 seconds before
+
+                        ISSCoordinates = getPosAtTime(now);
+                        lastPosition = getPosAtTime(oldTime);
+                        console.log(oldTime, lastPosition);
                         // We compute satellite position and orientation
                         if(satelliteModel){
                             satelliteModel.position.copy(ISSCoordinates);
@@ -553,11 +638,19 @@
                             satelliteModel.rotateY(Math.PI / 2);
                             satelliteModel.updateMatrixWorld();
 
-                        //    globeView.camera.camera3D.position.copy(ISSCoordinates.multiplyScalar(1.1));
-                        //    globeView.camera.camera3D.lookAt(ISSCoordinates);
-                            globeView.camera.camera3D.updateMatrixWorld(true);
+                         
+
+                            // We compute camera pos/ori depending on control options
+                            //   globeView.camera.camera3D.position.copy(ISSCoordinates.multiplyScalar(1.1));
+                            if(lookAtISS) globeView.camera.camera3D.lookAt(ISSCoordinates);
                             
-                            globeView.notifyChange(globeView.camera.camera3D);
+                            //   globeView.camera.camera3D.updateMatrixWorld(true);
+                            
+                            //   globeView.notifyChange(globeView.camera.camera3D);
+
+
+
+
 
                             // Drawing the trajectory
                             var sphere = new THREE.Mesh(geometryS, materialS);
@@ -569,7 +662,7 @@
                             spotLight.position.copy(ISSCoordinates.clone().multiplyScalar(1.02));
                             spotLight.updateMatrixWorld();
 
-                            globeView.setSunPositionAtTime(now);
+                            globeView.setSunPositionAtTime(new Date(now));
                             for(var i = 0; i < solarPanels.length; ++i){
                                 solarPanels[i].lookAt(globeView.sun.position);
                               //  solarPanels[i].updateMatrixWorld();
@@ -583,8 +676,14 @@
                             if(clouds){
                                 clouds.material.uniforms.sunPos.value = globeView.sun.position;
                                 clouds.material.uniforms.time.value = globalIterator;
-                                globalIterator++;
+                                globalIterator += incCloudSpeed;
                             }
+
+
+                            // Display Infos
+                            document.getElementById('help').innerHTML = new Date(now).toDateString()+ " "+ new Date(now).toLocaleTimeString();
+                           
+
                             /*
                             solarPanels[0].rotation.x += 0.1;
                             solarPanels[0].updateMatrixWorld();
@@ -617,7 +716,7 @@
 
                         }
                         //console.log(getsunpos());
-                        lastPosition = ISSCoordinates;
+                        //lastPosition = ISSCoordinates;
                         //   mesh.lookAt(new THREE.Vector3(0, 0, 0));
                         //   mesh.rotateX(Math.PI / 2);
                        // globeView.camera.camera3D.lookAt(ISSCoordinates);
