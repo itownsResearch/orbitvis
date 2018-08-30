@@ -34,7 +34,7 @@ body {
 .help {
     position: absolute;
     z-index: 0;
-    top: 200;
+    top: 300;
     left: 0;
     color: #eee;
     font: 15px 'Lucida Grande',sans-serif;
