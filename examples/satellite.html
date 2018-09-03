@@ -440,7 +440,7 @@
                 var thresholdLuminance = 0.1; // .15;
 
 
-                radarTex = new THREE.TextureLoader().load("http://realearth.ssec.wisc.edu/api/image?products=globalir&bounds=-89,-180,89,180&width=2048&height=2048",// onLoad callback
+                radarTex = new THREE.TextureLoader().load("https://realearth.ssec.wisc.edu/api/image?products=globalir&bounds=-89,-180,89,180&width=2048&height=2048",// onLoad callback
                     function ( texture ) {
                     
                         var imagedata = getImageData( texture.image );
