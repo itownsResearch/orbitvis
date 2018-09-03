@@ -102,10 +102,13 @@
                     function ( gltf ) {
 
                         satelliteModel = gltf.scene;
+                        satelliteModel.scale.set(100,100,100);
+                        satelliteModel.updateMatrixWorld();
                         globeView.scene.add( satelliteModel );
                         satelliteModel.position.copy(ISSCoordinates);
-                        satelliteModel.scale.multiplyScalar(100);
-                        satelliteModel.updateMatrixWorld();
+                        //console.log("satelliteModel scale: ", satelliteModel.scale);
+
+                        //satelliteModel.scale.set(100,100,100);
 
                         gltf.animations; // Array<THREE.AnimationClip>
                         gltf.scene; // THREE.Scene
