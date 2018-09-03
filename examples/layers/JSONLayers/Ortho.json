@@ -2,7 +2,7 @@
     "type": "color",
     "protocol":   "wmts",
     "id":         "Ortho",
-    "url":        "http://wxs.ign.fr/oej022d760omtb9y4b19bubh/geoportail/wmts",
+    "url":        "https://wxs.ign.fr/oej022d760omtb9y4b19bubh/geoportail/wmts",
     "networkOptions": {
         "crossOrigin": "anonymous"
     },
